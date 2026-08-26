@@ -1,0 +1,49 @@
+{
+    "edge-lr/default": {
+        "name": "edge-lr/default",
+        "type": "L3VRF",
+        "state": {
+            "route_distinguisher": ""
+        },
+        "interfaces": {
+            "interface": {
+                "ethernet1/1": {},
+                "loopback.1": {}
+            }
+        }
+    },
+    "edge-lr/customer-blue": {
+        "name": "edge-lr/customer-blue",
+        "type": "L3VRF",
+        "state": {
+            "route_distinguisher": ""
+        },
+        "interfaces": {
+            "interface": {
+                "ethernet1/2.200": {}
+            }
+        }
+    },
+    "services-lr/default": {
+        "name": "services-lr/default",
+        "type": "L3VRF",
+        "state": {
+            "route_distinguisher": ""
+        },
+        "interfaces": {
+            "interface": {
+                "tunnel.10": {}
+            }
+        }
+    },
+    "services-lr/empty-vrf": {
+        "name": "services-lr/empty-vrf",
+        "type": "L3VRF",
+        "state": {
+            "route_distinguisher": ""
+        },
+        "interfaces": {
+            "interface": {}
+        }
+    }
+}

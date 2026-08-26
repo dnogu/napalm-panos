@@ -24,7 +24,16 @@ import time
 import xml.etree
 from datetime import datetime
 
+from netmiko import ConnectHandler
+import pan.xapi
+import requests
+import requests_toolbelt
+from urllib3 import disable_warnings
+from urllib3.exceptions import InsecureRequestWarning
+import xmltodict
+
 from napalm.base import NetworkDriver, models
+from napalm.base.exceptions import CommandErrorException
 from napalm.base.exceptions import ConnectionException
 from napalm.base.exceptions import LockError
 from napalm.base.exceptions import MergeConfigException
@@ -33,23 +42,14 @@ from napalm.base.exceptions import UnlockError
 from napalm.base.helpers import mac as standardize_mac
 from napalm.base.utils.string_parsers import convert_uptime_string_seconds
 
-from netmiko import ConnectHandler
-
-import pan.xapi
-
-import requests
-
-import requests_toolbelt
-
-from urllib3 import disable_warnings
-from urllib3.exceptions import InsecureRequestWarning
-
-import xmltodict
+from napalm_panos.network_instances import parse_rest_network_instances
+from napalm_panos.network_instances import parse_xml_network_instances
 
 LOGGER = logging.getLogger(__name__)
 LOCK_TYPES = ("config", "commit")
 TAKE_LOCK_API_CMD = """<request><{0}-lock><add><comment>NAPALM-managed-lock</comment></add></{0}-lock></request>"""
 RELEASE_LOCK_API_CMD = "<request><{0}-lock><remove></remove></{0}-lock></request>"
+API_TRANSPORTS = ("auto", "rest", "xml")
 
 
 class PANOSDriver(NetworkDriver):  # pylint: disable=too-many-instance-attributes
@@ -77,6 +77,10 @@ class PANOSDriver(NetworkDriver):  # pylint: disable=too-many-instance-attribute
             optional_args = {}
         self.verify = optional_args.get("ssl_verify", False)
         self.session_config_lock = optional_args.get("config_lock", False)
+        self.api_transport = str(optional_args.get("api_transport", "xml")).lower()
+        if self.api_transport not in API_TRANSPORTS:
+            raise ValueError(f"api_transport must be one of: {', '.join(API_TRANSPORTS)}")
+        self.rest_api_version = str(optional_args.get("rest_api_version", ""))
 
         netmiko_argument_map = {
             "port": None,
@@ -440,6 +444,16 @@ class PANOSDriver(NetworkDriver):  # pylint: disable=too-many-instance-attribute
 
         return list(interface_set)
 
+    def _get_system_info(self):
+        """Return the system information supplied by PAN-OS."""
+        try:
+            self.device.op(cmd="<show><system><info></info></system></show>")
+            system_info_xml = xmltodict.parse(self.device.xml_root())
+            system_info_json = json.dumps(system_info_xml["response"]["result"]["system"])
+            return json.loads(system_info_json)
+        except (AttributeError, KeyError, TypeError):
+            return {}
+
     def get_arp_table(self, vrf=""):
         """Return ARP Table details."""
         if vrf:
@@ -475,14 +489,7 @@ class PANOSDriver(NetworkDriver):  # pylint: disable=too-many-instance-attribute
     def get_facts(self):
         """PANOS version of `get_facts` method, see NAPALM for documentation."""
         facts = {}
-
-        try:
-            self.device.op(cmd="<show><system><info></info></system></show>")
-            system_info_xml = xmltodict.parse(self.device.xml_root())
-            system_info_json = json.dumps(system_info_xml["response"]["result"]["system"])
-            system_info = json.loads(system_info_json)
-        except AttributeError:
-            system_info = {}
+        system_info = self._get_system_info()
 
         if system_info:
             facts["hostname"] = system_info["hostname"]
@@ -497,6 +504,94 @@ class PANOSDriver(NetworkDriver):  # pylint: disable=too-many-instance-attribute
             facts["interface_list"].sort()
 
         return facts
+
+    @staticmethod
+    def _parse_rest_network_instances(payload, advanced_routing):
+        """Normalize a PAN-OS REST API router response into NAPALM data."""
+        return parse_rest_network_instances(payload, advanced_routing)
+
+    @staticmethod
+    def _parse_xml_network_instances(configuration, advanced_routing):
+        """Normalize PAN-OS running configuration XML into NAPALM data."""
+        return parse_xml_network_instances(configuration, advanced_routing)
+
+    def _get_rest_api_key(self):
+        """Return an API key suitable for PAN-OS REST API requests."""
+        api_key = self.api_key or getattr(self.device, "api_key", "")
+        if not api_key:
+            api_key = self.device.keygen()
+        if not api_key:
+            raise ValueError("Unable to generate a PAN-OS API key")
+        return api_key
+
+    def _get_rest_api_version(self, system_info):
+        """Return the PAN-OS major.minor REST API version."""
+        version = self.rest_api_version or str(system_info.get("sw-version", ""))
+        match = re.match(r"^v?(\d+\.\d+)", version)
+        if not match:
+            raise ValueError(f"Unable to determine PAN-OS REST API version from {version!r}")
+        return match.group(1)
+
+    def _get_network_instances_rest(self, advanced_routing, system_info):
+        """Retrieve configured routing instances through the PAN-OS REST API."""
+        resource = "LogicalRouters" if advanced_routing else "VirtualRouters"
+        version = self._get_rest_api_version(system_info)
+        url = f"https://{self.hostname}/restapi/v{version}/Network/{resource}"
+        headers = {"X-PAN-KEY": self._get_rest_api_key()}
+
+        if not self.verify:
+            disable_warnings(InsecureRequestWarning)
+        response = requests.get(
+            url,
+            headers=headers,
+            verify=self.verify,
+            timeout=self.timeout,
+        )
+        response.raise_for_status()
+        return self._parse_rest_network_instances(response.json(), advanced_routing)
+
+    def _get_network_instances_xml(self, advanced_routing):
+        """Retrieve configured routing instances through the PAN-OS XML API."""
+        return self._parse_xml_network_instances(self._get_running(), advanced_routing)
+
+    def get_network_instances(self, name=""):
+        """Return configured virtual-router or logical-router VRF instances."""
+        system_info = self._get_system_info()
+        advanced_routing = str(system_info.get("advanced-routing", "off")).lower() in (
+            "on",
+            "yes",
+            "true",
+            "enabled",
+        )
+
+        use_rest = self.api_transport == "rest" or (self.api_transport == "auto" and not advanced_routing)
+        if use_rest:
+            try:
+                instances = self._get_network_instances_rest(advanced_routing, system_info)
+            except (
+                requests.RequestException,
+                pan.xapi.PanXapiError,
+                ValueError,
+                KeyError,
+                TypeError,
+            ) as exc:
+                if self.api_transport == "rest":
+                    raise CommandErrorException(
+                        f"Unable to retrieve PAN-OS network instances using REST: {exc}"
+                    ) from exc
+                LOGGER.debug(
+                    "PAN-OS REST network-instance retrieval failed; falling back to XML: %s",
+                    exc,
+                )
+                instances = self._get_network_instances_xml(advanced_routing)
+        else:
+            instances = self._get_network_instances_xml(advanced_routing)
+
+        if not name:
+            return instances
+        if name not in instances:
+            return {}
+        return {name: instances[name]}
 
     def get_lldp_neighbors(self):
         """Return LLDP neighbors details."""

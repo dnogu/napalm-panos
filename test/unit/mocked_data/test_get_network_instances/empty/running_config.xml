@@ -1,0 +1,11 @@
+<response status="success">
+  <result>
+    <config version="9.1.0">
+      <devices>
+        <entry name="localhost.localdomain">
+          <network />
+        </entry>
+      </devices>
+    </config>
+  </result>
+</response>

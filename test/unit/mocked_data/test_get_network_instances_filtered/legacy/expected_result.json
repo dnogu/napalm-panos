@@ -1,0 +1,14 @@
+{
+    "customer-a": {
+        "name": "customer-a",
+        "type": "L3VRF",
+        "state": {
+            "route_distinguisher": ""
+        },
+        "interfaces": {
+            "interface": {
+                "ethernet1/2.100": {}
+            }
+        }
+    }
+}

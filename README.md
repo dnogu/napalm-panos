@@ -71,7 +71,7 @@ This table identifies the currently available getters and the support for each:
 | get_lldp_neighbors        | ✅        |
 | get_lldp_neighbors_detail | ❌        |
 | get_mac_address_table     | ❌        |
-| get_network_instances     | ❌        |
+| get_network_instances     | ✅        |
 | get_ntp_peers             | ❌        |
 | get_ntp_servers           | ❌        |
 | get_ntp_stats             | ❌        |
@@ -85,3 +85,20 @@ This table identifies the currently available getters and the support for each:
 | is_alive                  | ✅        |
 | ping                      | ❌        |
 | traceroute                | ❌        |
+
+# Network Instances
+
+`get_network_instances()` reads the active routing engine reported by PAN-OS and returns the configured interfaces for each routing instance:
+
+- Legacy routing returns each virtual router by name. A virtual router named `default` has type `DEFAULT_INSTANCE`; all others have type `L3VRF`.
+- Advanced routing returns every child VRF as `logical-router/vrf`, for example `edge/default`. These are all `L3VRF` instances because PAN-OS does not have one device-wide default logical router.
+
+The getter reads committed running configuration through XML by default. Its optional `api_transport` argument accepts:
+
+- `xml` (default): read active virtual or logical routers through the XML API.
+- `auto`: use the documented REST resource for legacy virtual routers and fall back to XML if REST is unavailable; use XML for advanced routing.
+- `rest`: explicitly request REST. Logical-router REST resources vary by PAN-OS version, so an unsupported resource raises `CommandErrorException` instead of silently changing transports.
+
+Set `rest_api_version` in `optional_args` to override the version derived from `show system info`, if required by the firewall's `/restapi-doc` documentation.
+
+Virtual-router and logical-router definitions are device-level objects. The NAPALM network-instance model has no VSYS assignment field, so this getter does not represent the separate VSYS import relationships.

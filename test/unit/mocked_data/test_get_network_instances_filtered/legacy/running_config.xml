@@ -1,0 +1,24 @@
+<response status="success">
+  <result>
+    <config version="11.1.0">
+      <devices>
+        <entry name="localhost.localdomain">
+          <network>
+            <virtual-router>
+              <entry name="default">
+                <interface>
+                  <member>ethernet1/1</member>
+                </interface>
+              </entry>
+              <entry name="customer-a">
+                <interface>
+                  <member>ethernet1/2.100</member>
+                </interface>
+              </entry>
+            </virtual-router>
+          </network>
+        </entry>
+      </devices>
+    </config>
+  </result>
+</response>

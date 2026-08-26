@@ -1,0 +1,43 @@
+<response status="success">
+  <result>
+    <config version="11.1.0">
+      <devices>
+        <entry name="localhost.localdomain">
+          <deviceconfig>
+            <setting>
+              <advance-routing>yes</advance-routing>
+            </setting>
+          </deviceconfig>
+          <network>
+            <virtual-router>
+              <entry name="default">
+                <interface>
+                  <member>ethernet1/1</member>
+                  <member>loopback.1</member>
+                </interface>
+              </entry>
+              <entry name="customer-a">
+                <interface>
+                  <member>ethernet1/2.100</member>
+                  <member>tunnel.100</member>
+                </interface>
+              </entry>
+              <entry name="empty-vr" />
+            </virtual-router>
+            <logical-router>
+              <entry name="inactive-lr">
+                <vrf>
+                  <entry name="default">
+                    <interface>
+                      <member>ethernet1/9</member>
+                    </interface>
+                  </entry>
+                </vrf>
+              </entry>
+            </logical-router>
+          </network>
+        </entry>
+      </devices>
+    </config>
+  </result>
+</response>

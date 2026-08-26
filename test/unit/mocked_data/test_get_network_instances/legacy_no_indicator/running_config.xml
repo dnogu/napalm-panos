@@ -1,0 +1,30 @@
+<response status="success">
+  <result>
+    <config version="10.0.12">
+      <devices>
+        <entry name="localhost.localdomain">
+          <network>
+            <virtual-router>
+              <entry name="pre-advanced-routing">
+                <interface>
+                  <member>ethernet1/3</member>
+                </interface>
+              </entry>
+            </virtual-router>
+            <logical-router>
+              <entry name="inactive-decoy">
+                <vrf>
+                  <entry name="default">
+                    <interface>
+                      <member>ethernet1/9</member>
+                    </interface>
+                  </entry>
+                </vrf>
+              </entry>
+            </logical-router>
+          </network>
+        </entry>
+      </devices>
+    </config>
+  </result>
+</response>

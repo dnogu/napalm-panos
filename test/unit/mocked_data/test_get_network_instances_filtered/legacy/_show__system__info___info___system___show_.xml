@@ -1,0 +1,8 @@
+<response status="success">
+  <result>
+    <system>
+      <sw-version>11.1.4-h1</sw-version>
+      <advanced-routing>off</advanced-routing>
+    </system>
+  </result>
+</response>

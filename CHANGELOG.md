@@ -1,3 +1,9 @@
+## Unreleased
+
+### Added
+
+- Add `get_network_instances` support for legacy virtual routers and advanced-routing logical-router VRFs, with XML and REST transport options.
+
 ## 0.7.1 - 2026-06
 
 ### Fixed
