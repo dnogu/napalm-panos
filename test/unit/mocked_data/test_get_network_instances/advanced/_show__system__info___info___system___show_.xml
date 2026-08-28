@@ -1,0 +1,8 @@
+<response status="success">
+  <result>
+    <system>
+      <sw-version>12.1.2</sw-version>
+      <advanced-routing>on</advanced-routing>
+    </system>
+  </result>
+</response>

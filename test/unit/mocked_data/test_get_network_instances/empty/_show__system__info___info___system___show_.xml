@@ -1,0 +1,7 @@
+<response status="success">
+  <result>
+    <system>
+      <sw-version>9.1.0</sw-version>
+    </system>
+  </result>
+</response>

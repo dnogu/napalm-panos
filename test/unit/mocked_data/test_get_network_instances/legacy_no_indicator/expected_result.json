@@ -1,0 +1,14 @@
+{
+    "pre-advanced-routing": {
+        "name": "pre-advanced-routing",
+        "type": "L3VRF",
+        "state": {
+            "route_distinguisher": ""
+        },
+        "interfaces": {
+            "interface": {
+                "ethernet1/3": {}
+            }
+        }
+    }
+}

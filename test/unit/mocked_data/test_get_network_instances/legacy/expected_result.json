@@ -1,0 +1,38 @@
+{
+    "default": {
+        "name": "default",
+        "type": "DEFAULT_INSTANCE",
+        "state": {
+            "route_distinguisher": ""
+        },
+        "interfaces": {
+            "interface": {
+                "ethernet1/1": {},
+                "loopback.1": {}
+            }
+        }
+    },
+    "customer-a": {
+        "name": "customer-a",
+        "type": "L3VRF",
+        "state": {
+            "route_distinguisher": ""
+        },
+        "interfaces": {
+            "interface": {
+                "ethernet1/2.100": {},
+                "tunnel.100": {}
+            }
+        }
+    },
+    "empty-vr": {
+        "name": "empty-vr",
+        "type": "L3VRF",
+        "state": {
+            "route_distinguisher": ""
+        },
+        "interfaces": {
+            "interface": {}
+        }
+    }
+}
